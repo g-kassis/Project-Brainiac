@@ -12,7 +12,6 @@ Brain shift is an important challenge in neurosurgery, where the brain's positio
 
 Project Brainiac aims to contribute to the advancement of neurosurgical techniques by providing a valuable tool for predicting and understanding brain shift. This project will mainly serve to be a training tool for surgeons. By providing a simulated environment that mimics real world scenarios Project Brainiac will allow surgeons to maintain and hone their skills.
 
-
 # Dataset
 BraTS has always been focusing on the evaluation of state-of-the-art methods for the segmentation of brain tumors in multimodal magnetic resonance imaging (MRI) scans. BraTS 2020 utilizes multi-institutional pre-operative MRI scans and primarily focuses on the segmentation
 
