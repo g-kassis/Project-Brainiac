@@ -2,52 +2,92 @@ import numpy as np
 import pyvista as pv
 from pyvista import themes
 import h5py
+import scipy.ndimage as sci
+from scipy.spatial.transform import Rotation as R
 
 # pv.set_plot_theme(themes.DarkTheme())
+sagittal_angle = 0 #x
+horizontal_angle = 20 #z
+coronal_angle = 0 #y
+
 
 grid = pv.ImageData()
+
 #visualization using pyvistas ImageData for volume rendering
-def volumeRendering(plotter, brain_scan, z_pos):
+def volumeRendering(plotter, brain_scan, x_pos, y_pos,z_pos, opac, cmap):
     if not np.all(brain_scan == 0): #to take away top and bottom rectangles (not plotting all zero)
-        #initialize imageData
-        
-        grid.dimensions = brain_scan.shape[:3]  # Set dimensions based on the shape of the 3D volume
-        grid.spacing = (100, 100, 100)
-        grid.origin = (10, 0, z_pos * grid.spacing[2])  #adjusts z-axis to form 3d visualization
-        grid.point_data['Segmentation'] = brain_scan.flatten(order='F')  #flatten 
+
+        grid.dimensions = brain_scan.shape[:3] 
+        grid.spacing = (1, 1, 1)
+        grid.origin = (x_pos, y_pos, z_pos) 
+        grid.point_data['normal'] = brain_scan.flatten(order='F')  #flatten 
+        #mesh layer
+        contour = grid.contour()
+        pl = plotter.add_mesh(contour,color='k', show_edges=True)
+
+        #rotation
+        pl = rotate_brain(pl, sagittal_angle, horizontal_angle, coronal_angle)
+
+        pl.position = (0,0, 15)
 
         #adds volume to plotter
-        plotter.add_volume(grid, scalars='Segmentation', shade=True,)
+        plotter.add_volume(grid, scalars='normal', shade=False, opacity=opac ,cmap=cmap)
+        
 
+def rotate_brain(pl, sagittal_angle, horizontal_angle, coronal_angle):
+
+
+    # Create a rotation object
+    r = R.from_euler('xyz', [sagittal_angle, horizontal_angle, coronal_angle], degrees=True)
+
+    #Apply rotation to the points
+    pl.rotate_x(sagittal_angle)
+    pl.rotate_y(coronal_angle)
+    pl.rotate_z(horizontal_angle)
+    
+    return pl
+
+
+def readData(plotter, x_pos, y_pos, z_pos, cmap, opacity):
+
+
+    slice = 0 
+    volume = 1 #edit for different volumes
+    
+    while slice < 154:
+        with h5py.File(f'archive/BraTS2020_training_data/content/data/volume_{volume}_slice_{slice}.h5', 'r') as img:
+            brain_scan = np.array(img['image'])
+            print(f'archive/BraTS2020_training_data/content/data/volume_{volume}_slice_{slice}.h5')
+            volumeRendering(plotter, brain_scan, x_pos, y_pos, z_pos, opacity, cmap)
+
+            slice += 1
+            z_pos += 1
+        
+
+
+x_pos = 10
+y_pos = 0
+z_pos = 0
+cmap = "bone"
+opacity = "sigmoid"
 
 plotter = pv.Plotter()
-plotter.add_legend_scale(corner_offset_factor=2.0, bottom_border_offset=30, top_border_offset=30, left_border_offset=30, right_border_offset=30, bottom_axis_visibility=True, top_axis_visibility=True, left_axis_visibility=True, right_axis_visibility=True, legend_visibility=True, xy_label_mode=False, render=True, color=None, font_size_factor=0.6, label_size_factor=1.0, label_format=None, number_minor_ticks=0, tick_length=5, minor_tick_length=3, show_ticks=True, tick_label_offset=2)
-plotter.add_bounding_box(line_width=10, color='red')
- 
-slice = 0 
-volume = 1 #edit for different volumes
-z_pos = 0
-while slice < 154:
-    with h5py.File(f'archive/BraTS2020_training_data/content/data/volume_{volume}_slice_{slice}.h5', 'r') as img:
-        brain_scan = np.array(img['image'])
-        print(f'archive/BraTS2020_training_data/content/data/volume_{volume}_slice_{slice}.h5')
 
-        volumeRendering(plotter, brain_scan, z_pos)
+for i in range(3):
+    readData(plotter, x_pos, y_pos, z_pos, cmap, opacity)
 
-        slice += 1
-        z_pos += 1
-
+#features
+plotter.add_bounding_box( color='red', render_lines_as_tubes=True)
+plotter.show_bounds(grid='front', location='outer')
 
 #view from axial plane
-plotter.camera_position = (0, 0, 20)
+plotter.camera_position = 'zx'
 plotter.camera.roll = 180.0
 
 #plotter settings
-plotter.show_axes()
+#plotter.show_axes()
 # plotter.set_background('grey')
-
 
 
 #show plotter
 plotter.show()
-
